@@ -258,7 +258,7 @@ RSpec.describe Live::BadgeGranterHooks do
 
   describe "fixture seeding" do
     def live_badges
-      Badge.joins(:badge_grouping).where(badge_groupings: { name: "Live" })
+      Live::Badges.owned
     end
 
     it "creates all badges enabled" do
@@ -303,7 +303,7 @@ RSpec.describe Live::BadgeGranterHooks do
     it "enables all Live badges and schedules a backfill for the scheduled ones" do
       described_class.enable_all!
 
-      live_badges = Badge.joins(:badge_grouping).where(badge_groupings: { name: "Live" })
+      live_badges = Live::Badges.owned
       expect(live_badges.where(enabled: false).count).to eq(0)
       expect_job_enqueued(
         job: :backfill_badge,
@@ -324,7 +324,7 @@ RSpec.describe Live::BadgeGranterHooks do
     it "disables all Live badges" do
       described_class.disable_all!
 
-      live_badges = Badge.joins(:badge_grouping).where(badge_groupings: { name: "Live" })
+      live_badges = Live::Badges.owned
       expect(live_badges.where(enabled: true).count).to eq(0)
     end
   end

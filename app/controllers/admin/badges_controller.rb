@@ -173,7 +173,7 @@ class Admin::BadgesController < Admin::AdminController
     errors = []
     Badge.transaction do
       allowed = Badge.column_names.map(&:to_sym)
-      allowed -= %i[id created_at updated_at grant_count system]
+      allowed -= %i[id created_at updated_at grant_count system plugin_badge_key]
       allowed -= Badge.protected_system_fields if badge.system?
       allowed -= [:query] unless SiteSetting.enable_badge_sql
 

@@ -2193,7 +2193,8 @@ CREATE TABLE public.badges (
     system boolean DEFAULT false NOT NULL,
     long_description text,
     image_upload_id integer,
-    show_in_post_header boolean DEFAULT false NOT NULL
+    show_in_post_header boolean DEFAULT false NOT NULL,
+    plugin_badge_key character varying
 );
 
 
@@ -21795,6 +21796,13 @@ CREATE UNIQUE INDEX index_badges_on_name ON public.badges USING btree (name);
 
 
 --
+-- Name: index_badges_on_plugin_badge_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_badges_on_plugin_badge_key ON public.badges USING btree (plugin_badge_key);
+
+
+--
 -- Name: index_blog_paths_on_path; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -26635,6 +26643,7 @@ ALTER TABLE ONLY public.ad_plugin_house_ads_groups
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261110043000'),
 ('20261106020035'),
 ('20261105165644'),
 ('20261104011110'),

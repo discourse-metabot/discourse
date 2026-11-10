@@ -15,8 +15,7 @@ first_solution_query = <<~SQL
   WHERE row_number = 1
 SQL
 
-Badge.seed(:name) do |badge|
-  badge.name = "Solved 1"
+Badge.seed_plugin("discourse-solved:solved_1", name: "Solved 1") do |badge|
   badge.default_icon = "square-check"
   badge.badge_type_id = BadgeType::Bronze
   badge.default_badge_grouping_id = BadgeGrouping::Community
@@ -27,7 +26,6 @@ Badge.seed(:name) do |badge|
   badge.trigger = Badge::Trigger::PostRevision
   badge.auto_revoke = true
   badge.show_posts = true
-  badge.system = true
 end
 
 def solved_query_with_count(min_count)
@@ -45,12 +43,11 @@ def solved_query_with_count(min_count)
 end
 
 [
-  ["Solved 2", BadgeType::Silver, 10],
-  ["Solved 3", BadgeType::Gold, 50],
-  ["Solved 4", BadgeType::Gold, 150],
-].each do |name, level, count|
-  Badge.seed(:name) do |badge|
-    badge.name = name
+  ["discourse-solved:solved_2", "Solved 2", BadgeType::Silver, 10],
+  ["discourse-solved:solved_3", "Solved 3", BadgeType::Gold, 50],
+  ["discourse-solved:solved_4", "Solved 4", BadgeType::Gold, 150],
+].each do |key, name, level, count|
+  Badge.seed_plugin(key, name: name) do |badge|
     badge.default_icon = "square-check"
     badge.badge_type_id = level
     badge.default_badge_grouping_id = BadgeGrouping::Community
@@ -62,6 +59,5 @@ end
     badge.trigger = Badge::Trigger::PostRevision
     badge.auto_revoke = true
     badge.show_posts = false
-    badge.system = true
   end
 end

@@ -35,7 +35,7 @@ module Live
 
     BADGE_GROUP_NAME = "Live"
 
-    # The site setting is a master switch over the whole grouping. Badges are
+    # The site setting is a master switch over the plugin-owned badges. Badges are
     # flipped in bulk, so the per-badge save callbacks that keep user badge
     # counts consistent run once here instead.
     def self.enable_all!
@@ -62,7 +62,7 @@ module Live
       def grant(badge_name, user)
         return if user.bot?
 
-        badge = Badge.find_by(name: badge_name)
+        badge = Live::Badges.find(badge_name)
         BadgeGranter.grant(badge, user) if badge&.enabled?
       end
 
@@ -104,7 +104,7 @@ module Live
       end
 
       def live_badges
-        Badge.joins(:badge_grouping).where(badge_groupings: { name: BADGE_GROUP_NAME })
+        Live::Badges.owned
       end
 
       def sync_user_badges!

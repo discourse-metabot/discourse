@@ -112,6 +112,8 @@ class Badge < ActiveRecord::Base
   has_many :user_badges, dependent: :destroy
   has_many :upload_references, as: :target, dependent: :destroy
 
+  validate :plugin_badge_key_is_immutable, on: :update
+
   validates :name, presence: true, uniqueness: true, length: { maximum: 100 }
   validates :badge_type, presence: true
   validates :allow_title, inclusion: [true, false]
@@ -134,6 +136,86 @@ class Badge < ActiveRecord::Base
     SvgSprite.expire_cache
     UserStat.update_distinct_badge_count if saved_change_to_enabled?
     UserBadge.ensure_consistency! if saved_change_to_enabled?
+  end
+
+  # The namespaced key records ownership; the numeric ID is the seed identity.
+  # In particular, never turn a site's badge into a plugin badge just because
+  # its display name happens to match. Legacy adoption is deliberately stricter.
+  def self.seed_plugin(
+    key,
+    name:,
+    legacy_names: [name],
+    legacy_groupings: [],
+    legacy_queries: [],
+    adopt_legacy: true,
+    &definition
+  )
+    unless key.match?(/\A[a-z0-9_-]+:[a-z0-9_-]+\z/)
+      raise ArgumentError, "expected a namespaced plugin badge key"
+    end
+
+    transaction do
+      # Badge IDs are allocated from MAX(id), so serialize plugin seeds, including
+      # seeds of different keys. The unique index is the final ownership guard.
+      DB.exec("SELECT pg_advisory_xact_lock(hashtext('discourse_badge_ids'))")
+      badge = find_by(plugin_badge_key: key)
+
+      if !badge && adopt_legacy
+        expected = new(name: name, system: true)
+        definition.call(expected)
+        candidates = where(plugin_badge_key: nil, system: true, name: legacy_names).to_a
+        candidates.select! do |candidate|
+          %w[
+            badge_type_id
+            multiple_grant
+            target_posts
+            show_posts
+            trigger
+            auto_revoke
+            listable
+          ].all? { |field| candidate[field] == expected[field] } &&
+            ([expected.query] + legacy_queries)
+              .map { |query| query&.strip }
+              .include?(candidate.query&.strip) &&
+            (
+              expected.query.present? ||
+                (
+                  legacy_groupings.include?(candidate.badge_grouping&.name) &&
+                    candidate.icon == expected.icon
+                )
+            )
+        end
+        badge = candidates.first if candidates.one?
+      end
+
+      if !badge && where(name: name).exists?
+        Rails.logger.warn(
+          "Skipped plugin badge #{key.inspect}: the name #{name.inspect} is already in use",
+        )
+        next
+      end
+
+      badge ||= new(name: name, system: true)
+      # Persist the local ID once, retaining historical grants, links and titles.
+      # Further seeds find the ID through ownership, never through a display name.
+      if badge.new_record?
+        definition.call(badge)
+        badge.plugin_badge_key = key
+        badge.save!
+      else
+        badge.update!(plugin_badge_key: key) if badge.plugin_badge_key.nil?
+      end
+
+      seed(:id) do |seeded|
+        seeded.id = badge.id
+        # An existing, site-renamed badge keeps its name if the new default is
+        # occupied. Do not rewrite the unrelated badge or fail the whole upgrade.
+        seeded.name = where.not(id: badge.id).exists?(name: name) ? badge.name : name
+        seeded.system = true
+        definition.call(seeded)
+      end
+      find(badge.id)
+    end
   end
 
   # fields that can not be edited on system badges
@@ -272,6 +354,8 @@ class Badge < ActiveRecord::Base
   end
 
   def display_name
+    return name if !has_attribute?(:system) || !system?
+
     self.class.display_name(name)
   end
 
@@ -280,6 +364,8 @@ class Badge < ActiveRecord::Base
   end
 
   def long_description
+    return self[:long_description] || "" if !has_attribute?(:system) || !system?
+
     key = "badges.#{i18n_name}.long_description"
     I18n.t(
       key,
@@ -294,6 +380,8 @@ class Badge < ActiveRecord::Base
   end
 
   def description
+    return self[:description] || "" if !has_attribute?(:system) || !system?
+
     key = "badges.#{i18n_name}.description"
     I18n.t(
       key,
@@ -329,8 +417,17 @@ class Badge < ActiveRecord::Base
 
   protected
 
+  def plugin_badge_key_is_immutable
+    if will_save_change_to_plugin_badge_key? && plugin_badge_key_in_database.present?
+      errors.add(:plugin_badge_key, "cannot change once assigned")
+    end
+  end
+
   def ensure_not_system
-    self.id = [Badge.maximum(:id) + 1, 100].max unless id
+    if !id
+      DB.exec("SELECT pg_advisory_xact_lock(hashtext('discourse_badge_ids'))")
+      self.id = [Badge.maximum(:id) + 1, 100].max
+    end
   end
 
   def sanitize_description

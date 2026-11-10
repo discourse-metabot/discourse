@@ -11,7 +11,7 @@ module Jobs
 
         Badge
           .enabled
-          .where(name: ::DiscourseTopicVoting::BADGE_NAMES)
+          .where(plugin_badge_key: ::DiscourseTopicVoting::BADGE_KEYS)
           .find_each { |badge| BadgeGranter.backfill(badge, post_ids: [first_post_id]) }
       end
     end

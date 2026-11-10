@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 [
-  ["Daydreamer", BadgeType::Bronze, 1, false],
-  ["Brainstormer", BadgeType::Silver, 5, true],
-  ["Innovator", BadgeType::Silver, 15, true],
-  ["Visionary", BadgeType::Gold, 25, true],
-].each do |name, level, count, allow_title|
-  Badge.seed(:name) do |badge|
-    badge.name = name
+  ["discourse-topic-voting:daydreamer", "Daydreamer", BadgeType::Bronze, 1, false],
+  ["discourse-topic-voting:brainstormer", "Brainstormer", BadgeType::Silver, 5, true],
+  ["discourse-topic-voting:innovator", "Innovator", BadgeType::Silver, 15, true],
+  ["discourse-topic-voting:visionary", "Visionary", BadgeType::Gold, 25, true],
+].each do |key, name, level, count, allow_title|
+  Badge.seed_plugin(key, name: name) do |badge|
     badge.default_icon = "vote-up-filled"
     badge.badge_type_id = level
     badge.default_badge_grouping_id = BadgeGrouping::Community
@@ -20,6 +19,5 @@
     badge.trigger = Badge::Trigger::None
     badge.auto_revoke = true
     badge.show_posts = true
-    badge.system = true
   end
 end

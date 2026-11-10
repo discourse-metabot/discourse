@@ -25,6 +25,12 @@ module ::DiscourseTopicVoting
   ENABLE_TOPIC_VOTING_SETTING = "enable_topic_voting"
   VOTER_PREVIEW_LIMIT = 104
   BADGE_NAMES = %w[Daydreamer Brainstormer Innovator Visionary].freeze
+  BADGE_KEYS = %w[
+    discourse-topic-voting:daydreamer
+    discourse-topic-voting:brainstormer
+    discourse-topic-voting:innovator
+    discourse-topic-voting:visionary
+  ].freeze
 end
 
 require_relative "lib/discourse_topic_voting/badge_queries"
@@ -127,7 +133,9 @@ after_initialize do
   end
 
   register_modifier(:badge_granter_suppress_notification) do |suppress, badge, granted_at, _|
-    next true if DiscourseTopicVoting::BADGE_NAMES.include?(badge.name) && granted_at < 2.weeks.ago
+    if DiscourseTopicVoting::BADGE_KEYS.include?(badge.plugin_badge_key) && granted_at < 2.weeks.ago
+      next true
+    end
     suppress
   end
 

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe Jobs::BulkUserTitleUpdate do
-  fab!(:badge) { Fabricate(:badge, name: "Protector of the Realm", allow_title: true) }
+  fab!(:badge) do
+    Fabricate(:badge, name: "Protector of the Realm", allow_title: true, system: true)
+  end
   fab!(:user)
   fab!(:other_user, :user)
 
